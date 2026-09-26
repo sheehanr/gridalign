@@ -39,6 +39,56 @@ with date_slider:
     # Longest time_gap on spreadsheet is 3074
     max_time_gap = st.slider("Max Time Gap (days)", min_value=0, max_value=3650, value=730, step=60)
 
+
+# Find overlapping projects and store in list
+def find_overlaps(data, dist_limit, time_limit):
+    records = data.to_dict("records")
+    matches = []
+
+    for i in range(len(records)):
+        for j in range(i + 1, len(records)):
+            p1 = records[i]
+            p2 = records[j]
+
+            # Continue if both projects are handled by the same company
+            if p1["utility"] == p2["utility"]:
+                continue
+
+            dist = haversine(p1["lat_center"], p1["lon_center"], p2["lat_center"], p2["lon_center"])
+            time_gap = abs((p1["in_service_date"] - p2["in_service_date"]).days)
+
+            if dist <= dist_limit and time_gap <= time_limit:
+                matches.append(
+                    {
+                        "Project 1": p1["project_name"],
+                        "Utility 1": p1["utility"],
+                        "Project 2": p2["project_name"],
+                        "Utility 2": p2["utility"],
+                        "Dist. (mi)": round(dist, 1),
+                        "Gap (days)": time_gap,
+                        "p1_lat": p1["lat_center"],  # coordinates to be used in map
+                        "p1_lon": p1["lon_center"],
+                        "p2_lat": p2["lat_center"],
+                        "p2_lon": p2["lon_center"],
+                    }
+                )
+
+    return pd.DataFrame(matches)
+
+
+overlaps_df = find_overlaps(df, max_dist, max_time_gap)
+
+st.subheader("Identified Coordination Overlaps")
+st.metric("Matches Found", len(overlaps_df))
+
+if not overlaps_df.empty:
+    st.dataframe(
+        overlaps_df[["Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]],
+        use_container_width=True,
+    )
+else:
+    st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
+
 col1, col2 = st.columns(2)
 col1.metric("Total Projects", len(df))
 col2.metric("Utilities Found", ", ".join(df["utility"].unique()))
