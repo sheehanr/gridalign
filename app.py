@@ -94,7 +94,12 @@ else:
     st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
 # interactive map
-st.subheader("Overlap Map")
+map_col1, map_col2 = st.columns([6, 1], vertical_alignment="bottom")
+with map_col1:
+    st.subheader("Overlap Map")
+with map_col2:
+    # dropdown menu to choose light or dark map
+    map_theme = st.selectbox("Map Theme", ["Dark", "Light"], label_visibility="collapsed")
 
 # default map view centers on average of all project coordinates
 center_lat = projects_df["lat_center"].mean()
@@ -145,7 +150,7 @@ if not overlaps_df.empty:
 # render pydeck map
 st.pydeck_chart(
     pdk.Deck(
-        map_style="road",
+        map_style="dark" if map_theme == "Dark" else "road",
         initial_view_state=pdk.ViewState(
             latitude=center_lat,
             longitude=center_lon,
