@@ -166,6 +166,18 @@ st.pydeck_chart(
     )
 )
 
+# legend under map
+legend_items = [
+    f"<span style='display:inline-block;width:10px;height:10px;background-color:rgb({c[0]},{c[1]},{c[2]});border-radius:50%;margin-right:6px;'></span><b>{u}</b>"
+    for u, c in color_lookup.items()
+]
+st.markdown(
+    "<div style='margin-top: -5px; font-size: 0.85rem; color: #888;'>"
+    + " &nbsp;&nbsp;&bull;&nbsp;&nbsp; ".join(legend_items)
+    + "</div>",
+    unsafe_allow_html=True,
+)
+
 st.divider()
 
 # raw data inspection
