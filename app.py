@@ -126,8 +126,13 @@ project_nodes = pdk.Layer(
     get_position=["lon_center", "lat_center"],
     get_fill_color="color",
     get_radius=4000,  # size of nodes in meters
+    radius_min_pixels=6,
+    radius_max_pixels=15,
     pickable=True,  # enable mouse interactions
     auto_highlight=True,  # highlight on hover
+    parameters={
+        "depthTest": False,  # stops flicker between overlapping dots
+    },
 )
 
 layers = [project_nodes]
