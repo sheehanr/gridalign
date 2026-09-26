@@ -91,13 +91,17 @@ if not overlaps_df.empty:
 else:
     st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
-# raw data inspection
-col1, col2 = st.columns(2)
-col1.metric("Total Projects", len(projects_df))
-col2.metric("Utilities Found", ", ".join(projects_df["utility"].unique()))
+st.divider()
 
-st.subheader("Raw Projects Data")
-st.dataframe(
-    projects_df[["project_id", "utility", "state", "project_name", "lat_center", "lon_center", "in_service_date"]],
-    hide_index=True,
-)
+# raw data inspection
+with st.expander("View Raw Projects Data"):
+    col1, col2 = st.columns(2)
+    col1.metric("Total Projects", len(projects_df))
+    col2.metric("Utilities Found", ", ".join(projects_df["utility"].unique()))
+
+    st.subheader("Raw Projects Data")
+    st.dataframe(
+        projects_df[["project_id", "utility", "state", "project_name", "lat_center", "lon_center", "in_service_date"]],
+        use_container_width=True,
+        hide_index=True,
+    )
