@@ -70,6 +70,7 @@ projects_df = load_data()
 
 # sliders to adjust coordination thresholds
 st.subheader("Coordination Thresholds")
+
 dist_slider, time_slider = st.columns(2)
 with dist_slider:
     max_dist = st.slider("Max Distance (mi)", min_value=5.0, max_value=60.0, value=30.0, step=5.0)
@@ -92,6 +93,7 @@ if not overlaps_df.empty:
 else:
     st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
+# interactive map
 st.subheader("Overlap Map")
 
 # default map view centers on average of all project coordinates
@@ -118,14 +120,14 @@ project_nodes = pdk.Layer(
     data=map_projects,
     get_position=["lon_center", "lat_center"],
     get_fill_color="color",
-    get_radius=4000,
-    pickable=True,
-    auto_highlight=True,
+    get_radius=4000,  # size of nodes in km
+    pickable=True,  # enable mouse interactions
+    auto_highlight=True,  # highlight on hover
 )
 
-# connecting lines between matched projects
 layers = [project_nodes]
 
+# connecting lines between matched projects
 if not overlaps_df.empty:
     overlap_arcs = pdk.Layer(
         "ArcLayer",
@@ -148,7 +150,7 @@ st.pydeck_chart(
             latitude=center_lat,
             longitude=center_lon,
             zoom=7.5,
-            pitch=35,
+            pitch=35,  # angle to make 3D
         ),
         layers=layers,
         tooltip={
