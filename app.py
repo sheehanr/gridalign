@@ -16,7 +16,7 @@ def load_data():
     return df
 
 
-df = load_data()
+projects_df = load_data()
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -76,7 +76,7 @@ def find_overlaps(data, dist_limit, time_limit):
     return pd.DataFrame(matches)
 
 
-overlaps_df = find_overlaps(df, max_dist, max_time_gap)
+overlaps_df = find_overlaps(projects_df, max_dist, max_time_gap)
 
 st.subheader("Identified Coordination Overlaps")
 st.metric("Matches Found", len(overlaps_df))
@@ -91,11 +91,11 @@ else:
     st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
 col1, col2 = st.columns(2)
-col1.metric("Total Projects", len(df))
-col2.metric("Utilities Found", ", ".join(df["utility"].unique()))
+col1.metric("Total Projects", len(projects_df))
+col2.metric("Utilities Found", ", ".join(projects_df["utility"].unique()))
 
 st.subheader("Raw Projects Data")
 st.dataframe(
-    df[["project_id", "utility", "state", "project_name", "lat_center", "lon_center", "in_service_date"]],
+    projects_df[["project_id", "utility", "state", "project_name", "lat_center", "lon_center", "in_service_date"]],
     hide_index=True,
 )
