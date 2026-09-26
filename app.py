@@ -1,6 +1,7 @@
 from math import asin, cos, radians, sin, sqrt
 
 import pandas as pd
+import pydeck as pdk
 import streamlit as st
 
 # streamlit config
@@ -90,6 +91,73 @@ if not overlaps_df.empty:
     )
 else:
     st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
+
+st.subheader("Overlap Map")
+
+# default map view centers on average of all project coordinates
+center_lat = projects_df["lat_center"].mean()
+center_lon = projects_df["lon_center"].mean()
+
+# automatically assign different colors for each company
+palette = [
+    [0, 122, 255, 200],
+    [255, 149, 0, 200],
+    [52, 199, 89, 200],
+    [175, 82, 222, 200],
+]
+unique_utils = list(projects_df["utility"].unique())
+color_lookup = {u: palette[i % len(palette)] for i, u in enumerate(unique_utils)}
+
+map_projects = projects_df.copy()
+map_projects["color"] = map_projects["utility"].map(color_lookup.get)
+map_projects["date_str"] = map_projects["in_service_date"].dt.strftime("%b %Y")
+
+# colored circular nodes on map for project location
+project_nodes = pdk.Layer(
+    "ScatterplotLayer",
+    data=map_projects,
+    get_position=["lon_center", "lat_center"],
+    get_fill_color="color",
+    get_radius=4000,
+    pickable=True,
+    auto_highlight=True,
+)
+
+# connecting lines between matched projects
+layers = [project_nodes]
+
+if not overlaps_df.empty:
+    overlap_arcs = pdk.Layer(
+        "ArcLayer",
+        data=overlaps_df,
+        get_source_position=["p1_lon", "p1_lat"],
+        get_target_position=["p2_lon", "p2_lat"],
+        get_source_color=[0, 122, 255, 220],
+        get_target_color=[255, 149, 0, 220],
+        get_width=3,
+        pickable=True,
+        auto_highlight=True,
+    )
+    layers.append(overlap_arcs)
+
+# render pydeck map
+st.pydeck_chart(
+    pdk.Deck(
+        map_style="road",
+        initial_view_state=pdk.ViewState(
+            latitude=center_lat,
+            longitude=center_lon,
+            zoom=7.5,
+            pitch=35,
+        ),
+        layers=layers,
+        tooltip={
+            # type: ignore
+            "html": "<b>{project_name}</b><br/>Utility: {utility}<br/>In-Service: {date_str}",
+            "style": {"backgroundColor": "#1e1e1e", "color": "white", "fontSize": "13px"},
+        },
+    )
+)
 
 st.divider()
 
