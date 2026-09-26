@@ -1,3 +1,5 @@
+from math import asin, cos, radians, sin, sqrt
+
 import pandas as pd
 import streamlit as st
 
@@ -15,6 +17,16 @@ def load_data():
 
 
 df = load_data()
+
+
+def haversine(lat1, lon1, lat2, lon2):
+    # R = 6371.0  # Earth radius in km
+    R = 3959.0  # Earth radius in mi
+    lat_diff = radians(lat2 - lat1)
+    lon_diff = radians(lon2 - lon1)
+    a = sin(lat_diff / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(lon_diff / 2) ** 2
+    c = 2 * asin(sqrt(a))
+    return R * c
 
 
 col1, col2 = st.columns(2)
