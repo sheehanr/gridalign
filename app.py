@@ -85,6 +85,7 @@ if not overlaps_df.empty:
     st.dataframe(
         overlaps_df[["Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]],
         use_container_width=True,
+        hide_index=True,
     )
 else:
     st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
@@ -94,4 +95,7 @@ col1.metric("Total Projects", len(df))
 col2.metric("Utilities Found", ", ".join(df["utility"].unique()))
 
 st.subheader("Raw Projects Data")
-st.dataframe(df[["project_id", "utility", "state", "project_name", "lat_center", "lon_center", "in_service_date"]])
+st.dataframe(
+    df[["project_id", "utility", "state", "project_name", "lat_center", "lon_center", "in_service_date"]],
+    hide_index=True,
+)
