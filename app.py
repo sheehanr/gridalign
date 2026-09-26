@@ -125,7 +125,7 @@ project_nodes = pdk.Layer(
     data=map_projects,
     get_position=["lon_center", "lat_center"],
     get_fill_color="color",
-    get_radius=4000,  # size of nodes in km
+    get_radius=4000,  # size of nodes in meters
     pickable=True,  # enable mouse interactions
     auto_highlight=True,  # highlight on hover
 )
