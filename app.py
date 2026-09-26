@@ -29,6 +29,16 @@ def haversine(lat1, lon1, lat2, lon2):
     return R * c
 
 
+st.subheader("Coordination Thresholds")
+dist_slider, date_slider = st.columns(2)
+
+with dist_slider:
+    max_dist = st.slider("Max Distance (mi)", min_value=5.0, max_value=60.0, value=30.0, step=5.0)
+
+with date_slider:
+    # Longest time_gap on spreadsheet is 3074
+    max_time_gap = st.slider("Max Time Gap (days)", min_value=0, max_value=3650, value=730, step=60)
+
 col1, col2 = st.columns(2)
 col1.metric("Total Projects", len(df))
 col2.metric("Utilities Found", ", ".join(df["utility"].unique()))
