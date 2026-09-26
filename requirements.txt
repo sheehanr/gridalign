@@ -1,0 +1,7 @@
+streamlit
+pandas
+openpyxl
+pydeck
+folium
+streamlit-folium
+google-genai
