@@ -95,7 +95,7 @@ center_lon = projects_df["lon_center"].mean()
 # automatically assign different colors for each company
 palette = [
     [0, 122, 255, 200],
-    [255, 149, 0, 200],
+    [255, 215, 0],
     [52, 199, 89, 200],
     [175, 82, 222, 200],
 ]
