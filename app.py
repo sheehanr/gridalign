@@ -52,10 +52,7 @@ def get_combined_datasets(uploaded_files):
             missing_cols = [col for col in required_cols if col not in uploaded_df.columns]
 
             if missing_cols:
-                st.toast(
-                    f"File {uploaded_file.name} missing required columns: {', '.join(missing_cols)}. Skipping.",
-                    icon="⚠️",
-                )
+                st.toast(f"File {uploaded_file.name} missing required columns: {', '.join(missing_cols)}. Skipping.")
                 continue
 
             # align critical types with benchmark data, coercing errors to prevent crashes on bad date strings
@@ -289,27 +286,6 @@ def inject_custom_css():
             /* pin all question mark icons to the far right edge */
             section[data-testid="stSidebar"] [data-testid="stTooltipHoverTarget"] {
                 margin-left: auto !important;
-            }
-
-            /* center metric cards, labels, and values */
-            [data-testid="stMetric"] {
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                text-align: center !important;
-            }
-
-            [data-testid="stMetricLabel"] {
-                display: flex !important;
-                justify-content: center !important;
-                width: 100% !important;
-            }
-
-            [data-testid="stMetricValue"] {
-                display: flex !important;
-                justify-content: center !important;
-                width: 100% !important;
             }
         </style>
         """,
@@ -621,7 +597,7 @@ def render_map(projects_df, overlaps_df, selected_overlaps=None):
 
 
 def render_raw_data(projects_df):
-    with st.expander("View Raw Projects Data"):
+    with st.expander("View All Loaded Data"):
         utilities_str = ", ".join(sorted(projects_df["utility"].unique()))
         st.write(f"**Utilities represented:** {utilities_str}")
 
@@ -845,6 +821,7 @@ def main():
         st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
     st.divider()
+
     render_raw_data(projects_df)
 
 
