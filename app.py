@@ -9,7 +9,7 @@ st.set_page_config(layout="wide", page_title="GridAlign", initial_sidebar_state=
 # --- constants ---
 DATA_PATH = "data/Projects_Overlaps.xlsx"
 EARTH_RADIUS_MI = 3959.0
-COLOR_PALETTE = [
+UTILITY_COLOR_PALETTE = [
     [0, 122, 255, 200],
     [255, 215, 0],
     [52, 199, 89, 200],
@@ -214,7 +214,7 @@ def render_map(projects_df, overlaps_df, selected_overlaps=None):
         map_theme = st.selectbox("Map Theme", ["Dark", "Light"], label_visibility="collapsed")
 
     unique_utils = list(projects_df["utility"].unique())
-    color_lookup = {u: COLOR_PALETTE[i % len(COLOR_PALETTE)] for i, u in enumerate(unique_utils)}
+    color_lookup = {u: UTILITY_COLOR_PALETTE[i % len(UTILITY_COLOR_PALETTE)] for i, u in enumerate(unique_utils)}
 
     active_projects = set()
     if not overlaps_df.empty:
