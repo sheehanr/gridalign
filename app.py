@@ -139,13 +139,17 @@ layers = [project_nodes]
 
 # connecting lines between matched projects
 if not overlaps_df.empty:
+    map_overlaps = overlaps_df.copy()
+    map_overlaps["color_p1"] = map_overlaps["Utility 1"].map(color_lookup.get)
+    map_overlaps["color_p2"] = map_overlaps["Utility 2"].map(color_lookup.get)
+
     overlap_arcs = pdk.Layer(
         "ArcLayer",
-        data=overlaps_df,
+        data=map_overlaps,
         get_source_position=["p1_lon", "p1_lat"],
         get_target_position=["p2_lon", "p2_lat"],
-        get_source_color=[0, 122, 255, 220],
-        get_target_color=[255, 149, 0, 220],
+        get_source_color="color_p1",
+        get_target_color="color_p2",
         get_width=3,
         pickable=True,
         auto_highlight=True,
