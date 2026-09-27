@@ -5,7 +5,7 @@ import pydeck as pdk
 import streamlit as st
 
 # streamlit config
-st.set_page_config(layout="wide", page_title="GridLock Coordinator")
+st.set_page_config(layout="wide", page_title="GridLock Coordinator", initial_sidebar_state="expanded")
 st.title("GridLock Coordinator")
 
 
@@ -69,14 +69,9 @@ def find_overlaps(data, dist_limit, time_limit):
 projects_df = load_data()
 
 # sliders to adjust coordination thresholds
-st.subheader("Coordination Thresholds")
-
-dist_slider, time_slider = st.columns(2)
-with dist_slider:
-    max_dist = st.slider("Max Distance (mi)", min_value=5.0, max_value=60.0, value=25.0, step=5.0)
-with time_slider:
-    # largest time_gap on spreadsheet is 3074
-    max_time_gap = st.slider("Max Time Gap (days)", min_value=0, max_value=3650, value=730, step=60)
+st.sidebar.header("Coordination Thresholds")
+max_dist = st.sidebar.slider("Max Distance (mi)", min_value=5.0, max_value=60.0, value=25.0, step=5.0)
+max_time_gap = st.sidebar.slider("Max Time Gap (days)", min_value=0, max_value=3650, value=730, step=60)
 
 overlaps_df = find_overlaps(projects_df, max_dist, max_time_gap)
 
@@ -84,19 +79,6 @@ overlaps_df = find_overlaps(projects_df, max_dist, max_time_gap)
 if not overlaps_df.empty:
     overlaps_df = overlaps_df.sort_values(by=["Dist. (mi)", "Gap (days)"]).reset_index(drop=True)
     overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
-
-st.subheader("Identified Coordination Overlaps")
-st.metric("Matches Found", len(overlaps_df))
-
-# show overlaps according to user-defined thresholds
-if not overlaps_df.empty:
-    st.dataframe(
-        overlaps_df[["Rank", "Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]],
-        use_container_width=True,
-        hide_index=True,
-    )
-else:
-    st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
 # interactive map
 map_col1, map_col2 = st.columns([6, 1], vertical_alignment="bottom")
@@ -223,6 +205,19 @@ st.markdown(
     + "</div>",
     unsafe_allow_html=True,
 )
+
+st.subheader("Identified Coordination Overlaps")
+st.metric("Matches Found", len(overlaps_df))
+
+# show overlaps according to user-defined thresholds
+if not overlaps_df.empty:
+    st.dataframe(
+        overlaps_df[["Rank", "Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]],
+        use_container_width=True,
+        hide_index=True,
+    )
+else:
+    st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
 st.divider()
 
