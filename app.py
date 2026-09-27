@@ -153,9 +153,49 @@ def inject_custom_css():
                 padding-bottom: 2rem !important;
             }
 
-            /* sidebar border */
+            /* sidebar border and default width */
             section[data-testid="stSidebar"] {
                 border-right: 2px solid #27272a !important;
+                min-width: 360px !important;
+                max-width: 360px !important;
+            }
+
+            /* sidebar header styling and cushion underneath */
+            section[data-testid="stSidebar"] h2 {
+                font-size: 1.65rem !important;
+                font-weight: 700 !important;
+                margin-top: 0.25rem !important;
+                margin-bottom: 1.5rem !important;
+            }
+
+            /* space above and below the divider (separates sliders from pills) */
+            section[data-testid="stSidebar"] hr {
+                margin-top: 2rem !important;
+                margin-bottom: 1.75rem !important;
+                border-color: #27272a !important;
+            }
+
+            /* space between the two pill groups */
+            section[data-testid="stSidebar"] [data-testid="stPills"] {
+                margin-bottom: 1.5rem !important;
+            }
+
+            /* ensure widget labels stretch across the full sidebar width */
+            section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {
+                display: flex !important;
+                width: 100% !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+            }
+
+            /* sliders already have a full-width container, keep their label width natural */
+            section[data-testid="stSidebar"] [data-testid="stSlider"] [data-testid="stWidgetLabel"] {
+                width: auto !important;
+            }
+
+            /* pin all question mark icons to the far right edge */
+            section[data-testid="stSidebar"] [data-testid="stTooltipHoverTarget"] {
+                margin-left: auto !important;
             }
         </style>
         """,
@@ -171,12 +211,52 @@ def render_title():
     )
 
 
-def render_sidebar():
+def render_sidebar(available_utilities):
     with st.sidebar:
         st.header("Filter Results")
-        max_dist = st.slider("Max Distance (mi)", min_value=5.0, max_value=60.0, value=25.0, step=5.0)
-        max_time_gap = st.slider("Max Time Gap (days)", min_value=0, max_value=1200, value=730, step=10)
-    return max_dist, max_time_gap
+
+        # sliders for distance and time gap
+        max_dist = st.slider(
+            "Max Distance (mi)",
+            min_value=5.0,
+            max_value=60.0,
+            value=25.0,
+            step=5.0,
+            help="Negligible cost savings past 25 miles",
+        )
+        max_time_gap = st.slider(
+            "Max Time Gap (days)",
+            min_value=0,
+            max_value=1200,
+            value=730,
+            step=10,
+            help="Negligible cost savings past 730 days (2 years)",
+        )
+
+        # clickable pills for tiers
+        tier_options = ["Tier 1 (High)", "Tier 2 (Moderate)", "Tier 3 (Low)", "Negligible Savings"]
+        selected_tiers = st.pills(
+            "Criticality Tiers",
+            options=tier_options,
+            default=tier_options,
+            selection_mode="multi",
+            help=r"- **Tier 1:** $\ge$\$750k savings or high proximity (<10 mi, <180 d)" + "\n"
+            r"- **Tier 2:** \$250k–\$750k savings" + "\n"
+            r"- **Tier 3:** <\$250k savings" + "\n"
+            r"- **Negligible:** Beyond economic limits (\$0 savings)",
+        )
+        selected_tiers = list(selected_tiers or [])  # fallback to empty list if user unselects all
+
+        # clickable pills for utilities
+        selected_utilities = st.pills(
+            "Participating Utilities",
+            options=available_utilities,
+            default=available_utilities,
+            selection_mode="multi",
+        )
+        selected_utilities = list(selected_utilities or [])
+
+    return max_dist, max_time_gap, selected_utilities, selected_tiers
 
 
 def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, selected_overlaps=None):
@@ -415,15 +495,31 @@ def main():
     render_title()
 
     projects_df = load_data()
-    max_dist, max_time_gap = render_sidebar()
+    all_utilities = sorted(projects_df["utility"].unique())
+
+    # render sidebar with dynamic filters
+    max_dist, max_time_gap, selected_utils, selected_tiers = render_sidebar(all_utilities)
+
+    # calculate overlaps based on distance and schedule sliders
     overlaps_df = find_overlaps(projects_df, max_dist, max_time_gap)
 
+    # apply utility and tier filters
     if not overlaps_df.empty:
-        # rank entries primarily by cost savings and then distance
-        overlaps_df = overlaps_df.sort_values(by=["Savings ($)", "Dist. (mi)"], ascending=[False, True]).reset_index(
-            drop=True
+        # both utilities must be in selected utilities and tier must match selected tiers
+        mask = (
+            overlaps_df["Utility 1"].isin(selected_utils)
+            & overlaps_df["Utility 2"].isin(selected_utils)
+            & overlaps_df["Criticality"].isin(selected_tiers)
         )
-        overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
+        # wrap in dataframe so pyright preserves the dataframe type instead of inferring ndarray
+        overlaps_df = pd.DataFrame(overlaps_df.loc[mask])
+
+        if not overlaps_df.empty:
+            # rank entries primarily by cost savings and then distance
+            overlaps_df = overlaps_df.sort_values(
+                by=["Savings ($)", "Dist. (mi)"], ascending=[False, True]
+            ).reset_index(drop=True)
+            overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
 
     # safely extract user's clicked rows from streamlit's session state dictionary
     selected_overlaps = None
