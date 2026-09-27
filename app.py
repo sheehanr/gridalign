@@ -5,8 +5,21 @@ import pydeck as pdk
 import streamlit as st
 
 # streamlit config
-st.set_page_config(layout="wide", page_title="GridLock Coordinator", initial_sidebar_state="expanded")
-st.title("GridLock Coordinator")
+st.set_page_config(layout="wide", page_title="GridAlign", initial_sidebar_state="expanded")
+st.markdown(  # custom title formatting
+    """
+    <style>
+        .block-container {
+            padding-top: 3.75rem !important;
+            padding-bottom: 2rem !important;
+        }
+    </style>
+    <h1 style='text-align: center; font-size: 3.5rem; font-weight: 700; margin-top: 0rem; margin-bottom: 2rem;'>
+        GridAlign
+    </h1>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # load projects spreadsheet into a dataframe
