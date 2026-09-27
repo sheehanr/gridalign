@@ -22,10 +22,49 @@ BASE_MOBILIZATION_COST = 1_800_000  # baseline combined equipment and labor cost
 
 # --- data processing ---
 @st.cache_data
-def load_data():
+def load_default_data():
     df = pd.read_excel(DATA_PATH, sheet_name="projects")
     df["in_service_date"] = pd.to_datetime(df["in_service_date"])
     return df
+
+
+def get_combined_datasets(uploaded_files):
+    """Loads default project data and appends any valid uploaded datasets."""
+    combined_df = load_default_data().copy()
+
+    if not uploaded_files:
+        return combined_df
+
+    for uploaded_file in uploaded_files:
+        try:
+            if uploaded_file.name.endswith(".xlsx"):
+                uploaded_df = pd.read_excel(uploaded_file)
+            else:
+                uploaded_df = pd.read_csv(uploaded_file)
+
+            # align critical types with benchmark data
+            if "in_service_date" in uploaded_df.columns:
+                uploaded_df["in_service_date"] = pd.to_datetime(uploaded_df["in_service_date"])
+
+            # ensure coordinates are parsed as float numbers (handles csv whitespace/strings)
+            for coord in ["lat_center", "lon_center"]:
+                if coord in uploaded_df.columns:
+                    uploaded_df[coord] = pd.to_numeric(uploaded_df[coord], errors="coerce")
+
+            # drop rows where coordinates failed to parse
+            uploaded_df = uploaded_df.dropna(subset=["lat_center", "lon_center"])
+
+            # append and drop duplicates by project_id (keeps the uploaded version)
+            combined_df = pd.concat([combined_df, uploaded_df], ignore_index=True)
+
+        except Exception as e:
+            st.toast(f"Failed to parse uploaded file {uploaded_file.name}. Skipping.")
+            print(f"Error parsing upload: {e}")
+
+    if "project_id" in combined_df.columns:
+        combined_df = combined_df.drop_duplicates(subset=["project_id"], keep="last")
+
+    return combined_df
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -403,19 +442,32 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
 
 
 def render_map(projects_df, overlaps_df, selected_overlaps=None):
-    st.markdown(
-        f"""
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-            <span style="font-size: 1.45rem; font-weight: 700; color: #ffffff;">
-                Coordination Overlaps
-            </span>
-            <span style="background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; font-size: 0.8rem; font-weight: 600; padding: 2px 9px; border-radius: 9999px;">
-                {len(overlaps_df)} Matches
-            </span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    col_title, col_action = st.columns([8, 1], vertical_alignment="center")
+
+    with col_title:
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.45rem; font-weight: 700; color: #ffffff;">
+                    Coordination Overlaps
+                </span>
+                <span style="background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; font-size: 0.8rem; font-weight: 600; padding: 2px 9px; border-radius: 9999px;">
+                    {len(overlaps_df)} Matches
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_action, st.popover("Upload", use_container_width=True):
+        st.caption("Upload CSV or XLSX matching challenge data schema")
+        st.file_uploader(
+            "Upload Additional Data",
+            type=["csv", "xlsx"],
+            accept_multiple_files=True,
+            key="dataset_upload",
+            label_visibility="collapsed",
+        )
 
     unique_utils = list(projects_df["utility"].unique())
     color_lookup = {u: UTILITY_COLOR_PALETTE[i % len(UTILITY_COLOR_PALETTE)] for i, u in enumerate(unique_utils)}
@@ -502,10 +554,20 @@ def render_raw_data(projects_df):
         col1.metric("Total Project Count", len(projects_df))
         col2.metric("Total Utility Count", len(projects_df["utility"].unique()))
 
+        # safe column filter prevents KeyError if an uploaded file omits state or other fields
+        display_cols = [
+            "project_id",
+            "utility",
+            "state",
+            "project_name",
+            "lat_center",
+            "lon_center",
+            "in_service_date",
+        ]
+        safe_cols = [c for c in display_cols if c in projects_df.columns]
+
         st.dataframe(
-            projects_df[
-                ["project_id", "utility", "state", "project_name", "lat_center", "lon_center", "in_service_date"]
-            ],
+            projects_df[safe_cols],
             use_container_width=True,
             hide_index=True,
         )
@@ -516,7 +578,9 @@ def main():
     inject_custom_css()
     render_title()
 
-    projects_df = load_data()
+    uploaded_files = st.session_state.get("dataset_upload", [])
+    projects_df = get_combined_datasets(uploaded_files)
+
     all_utilities = sorted(projects_df["utility"].unique())
 
     # render sidebar with dynamic filters
