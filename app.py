@@ -12,7 +12,7 @@ st.title("GridLock Coordinator")
 # load projects spreadsheet into a dataframe
 @st.cache_data  # keep spreadsheet in memory instead of constantly reloading
 def load_data():
-    path = "Sperry-Tech-Challenge/Projects_Overlaps.xlsx"
+    path = "data/Projects_Overlaps.xlsx"
     df = pd.read_excel(path, sheet_name="projects")
     df["in_service_date"] = pd.to_datetime(df["in_service_date"])
 
