@@ -197,7 +197,7 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
             return base + [255] if row["project_name"] in selected_project_names else base + [40]
 
         # if nothing is clicked, just slightly dim projects that don't have any overlaps at all
-        return base + [220] if row["project_name"] in active_projects else base + [110]
+        return base + [220] if row["project_name"] in active_projects else base + [40]
 
     map_projects["color"] = map_projects.apply(get_node_color, axis=1)
 
