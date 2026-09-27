@@ -14,7 +14,7 @@ A coordination dashboard for regional power grid planning. GridAlign identifies 
 ![GridAlign Dashboard 2 -- Overlapping Projects and Hubs Views](assets/gridalign_dashboard2.png)
 ![GridAlign Dashboard 3 -- All Loaded Data View](assets/gridalign_dashboard3.png)
 
-[Watch the Demo Video](https://youtu.be/sLFvRct_IdE)
+[Watch the Demo Video](https://youtu.be/NXdtBrgQD1Q)
 
 ---
 
