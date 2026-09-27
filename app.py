@@ -72,19 +72,30 @@ def find_overlaps(data, dist_limit, time_limit):
 
 
 # --- ui components ---
-def render_header():
+def inject_custom_css():
     st.markdown(
         """
         <style>
+            /* manage spacing at top and bottom of page */
             .block-container {
                 padding-top: 3.75rem !important;
                 padding-bottom: 2rem !important;
             }
+
+            /* sidebar border */
+            section[data-testid="stSidebar"] {
+                border-right: 2px solid #27272a !important;
+            }
         </style>
-        <h1 style='text-align: center; font-size: 3.5rem; font-weight: 700; margin-top: 0rem; margin-bottom: 2rem;'>
-            GridAlign
-        </h1>
         """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_title():
+    st.markdown(
+        "<h1 style='text-align: center; font-size: 3.5rem; font-weight: 700; margin-top: 0rem; margin-bottom: 2rem;'>"
+        "GridAlign</h1>",
         unsafe_allow_html=True,
     )
 
@@ -319,7 +330,8 @@ def render_raw_data(projects_df):
 
 # --- main ---
 def main():
-    render_header()
+    inject_custom_css()
+    render_title()
 
     projects_df = load_data()
     max_dist, max_time_gap = render_sidebar()
