@@ -1,6 +1,6 @@
 project_id,utility,state,project_name,name_a,lat_a,lon_a,name_b,lat_b,lon_b,lat_center,lon_center,in_service_date,overlap_count,overlap_1,overlap_2,overlap_3
-PEG-101,Palmetto Energy Grid,SC,Beaufort Island 115kV Line Tap,Port Royal Station,32.44,-80.68,Saint Helena Tap,32.46,-80.66,32.45,-80.67,2026-08-15,0,,,
-PEG-102,Palmetto Energy Grid,SC,North Augusta Seam Intertie 230kV,Urquhart Station Tap,33.51,-81.94,Horse Creek Substation,33.53,-81.96,33.52,-81.95,2026-10-15,0,,,
-PEG-103,Palmetto Energy Grid,SC,Anderson Seam Gateway 230kV,Anderson South Station,34.44,-82.77,Hartwell Dam SC Tap,34.46,-82.79,34.45,-82.78,2027-03-15,0,,,
-PEG-104,Palmetto Energy Grid,SC,Columbia Midlands 230kV Transformer,Saluda River Station,34.0,-81.04,Broad River Tap,34.02,-81.02,34.01,-81.03,2026-11-20,0,,,
-PEG-105,Palmetto Energy Grid,SC,Pee Dee Regional 115kV Feeder,Florence East Tap,34.18,-79.76,Darlington Station,34.2,-79.78,34.19,-79.77,2027-05-15,0,,,
+PEG-101,Palmetto Energy Grid,SC,Beaufort Peninsula 115kV Line Tap,Port Royal Station,32.44,-80.66,Saint Helena Tap,32.46,-80.64,32.45,-80.65,2026-08-15,0,,,
+PEG-102,Palmetto Energy Grid,SC,North Augusta Seam Intertie 230kV,Urquhart Station Tap,33.51,-81.94,Horse Creek Substation,33.53,-81.96,33.52,-81.95,2026-11-01,0,,,
+PEG-103,Palmetto Energy Grid,SC,Anderson Seam Gateway 230kV,Anderson South Station,34.44,-82.77,Hartwell Dam SC Tap,34.46,-82.79,34.45,-82.78,2027-04-10,0,,,
+PEG-104,Palmetto Energy Grid,SC,Columbia Midlands 230kV Substation,Saluda River Station,34.0,-81.04,Broad River Tap,34.02,-81.02,34.01,-81.03,2026-11-20,0,,,
+PEG-105,Palmetto Energy Grid,SC,Florence Pee Dee Loop Reconductoring,Florence East Tap,34.18,-79.76,Darlington Station,34.2,-79.78,34.19,-79.77,2027-05-15,0,,,
