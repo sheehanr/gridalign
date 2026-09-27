@@ -175,7 +175,7 @@ def render_sidebar():
     with st.sidebar:
         st.header("Filter Results")
         max_dist = st.slider("Max Distance (mi)", min_value=5.0, max_value=60.0, value=25.0, step=5.0)
-        max_time_gap = st.slider("Max Time Gap (days)", min_value=0, max_value=3650, value=730, step=60)
+        max_time_gap = st.slider("Max Time Gap (days)", min_value=0, max_value=1200, value=730, step=10)
     return max_dist, max_time_gap
 
 
