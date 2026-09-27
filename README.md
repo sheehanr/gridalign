@@ -4,6 +4,8 @@
 
 A coordination dashboard for regional power grid planning. GridAlign identifies overlapping capital projects across neighboring electric utilities and calculates the cost savings from pooling staging yards, equipment, and labor.
 
+[gridalign.streamlit.app](https://gridalign.streamlit.app)
+
 ---
 
 ## Screenshots & Demo
