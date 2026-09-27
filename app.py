@@ -80,13 +80,18 @@ with time_slider:
 
 overlaps_df = find_overlaps(projects_df, max_dist, max_time_gap)
 
+# rank entries primarily by distance and time gap
+if not overlaps_df.empty:
+    overlaps_df = overlaps_df.sort_values(by=["Dist. (mi)", "Gap (days)"]).reset_index(drop=True)
+    overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
+
 st.subheader("Identified Coordination Overlaps")
 st.metric("Matches Found", len(overlaps_df))
 
 # show overlaps according to user-defined thresholds
 if not overlaps_df.empty:
     st.dataframe(
-        overlaps_df[["Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]],
+        overlaps_df[["Rank", "Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]],
         use_container_width=True,
         hide_index=True,
     )
