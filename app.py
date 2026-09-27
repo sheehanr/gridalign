@@ -259,9 +259,9 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
         map_overlaps["tip_title"] = "Matched Overlap - " + map_overlaps["Criticality"]
         map_overlaps["tip_sub"] = map_overlaps["Project 1"] + " ↔ " + map_overlaps["Project 2"]
         map_overlaps["tip_body"] = (
-            "Dist.: "
+            "Distance: "
             + map_overlaps["Dist. (mi)"].astype(str)
-            + " mi | Gap: "
+            + " mi | Time Gap: "
             + map_overlaps["Gap (days)"].astype(str)
             + " days | Est. Savings: $"
             + map_overlaps["Savings ($)"].apply(lambda x: f"{x:,}")
