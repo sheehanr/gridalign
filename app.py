@@ -119,6 +119,8 @@ map_projects = projects_df.copy()
 map_projects["color"] = map_projects["utility"].map(color_lookup.get)
 map_projects["date_str"] = map_projects["in_service_date"].dt.strftime("%b %Y")
 
+layers = []
+
 # colored circular nodes on map for project location
 project_nodes = pdk.Layer(
     "ScatterplotLayer",
@@ -134,8 +136,7 @@ project_nodes = pdk.Layer(
         "depthTest": False,  # stops flicker between overlapping dots
     },
 )
-
-layers = [project_nodes]
+layers.append(project_nodes)
 
 # connecting lines between matched projects
 if not overlaps_df.empty:
