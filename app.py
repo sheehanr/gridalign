@@ -125,7 +125,7 @@ project_nodes = pdk.Layer(
     data=map_projects,
     get_position=["lon_center", "lat_center"],
     get_fill_color="color",
-    get_radius=4000,  # size of nodes in meters
+    get_radius=6000,  # size of nodes in meters
     radius_min_pixels=6,
     radius_max_pixels=15,
     pickable=True,  # enable mouse interactions
@@ -159,7 +159,7 @@ st.pydeck_chart(
         initial_view_state=pdk.ViewState(
             latitude=center_lat,
             longitude=center_lon,
-            zoom=7.5,
+            zoom=6.5,
             pitch=35,  # angle to make 3D
         ),
         layers=layers,
