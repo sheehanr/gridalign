@@ -230,9 +230,24 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
     if not overlaps_df.empty:
         map_overlaps = overlaps_df.copy()
 
+        # check for negligible relations
+        is_negligible = map_overlaps["Criticality"].str.contains("Negligible", case=False, na=False)
+
+        # base widths: slimmer for negligible, default for viable
         map_overlaps["arc_width"] = 2.0
+        map_overlaps.loc[is_negligible, "arc_width"] = 1.5
+
+        # base colors: map utility colors
         map_overlaps["color_p1"] = map_overlaps["Utility 1"].map(color_lookup.get)
         map_overlaps["color_p2"] = map_overlaps["Utility 2"].map(color_lookup.get)
+
+        # mute negligible arcs to faint gray
+        map_overlaps.loc[is_negligible, "color_p1"] = map_overlaps.loc[is_negligible, "color_p1"].apply(
+            lambda _: [190, 195, 205, 80]
+        )
+        map_overlaps.loc[is_negligible, "color_p2"] = map_overlaps.loc[is_negligible, "color_p2"].apply(
+            lambda _: [190, 195, 205, 80]
+        )
 
         # visually emphasize the connecting arcs for any overlaps selected in the table
         if selected_overlaps is not None and not selected_overlaps.empty:
@@ -250,10 +265,10 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
 
             # decreased arc opacity for unselected rows
             map_overlaps.loc[~is_match, "color_p1"] = map_overlaps.loc[~is_match, "color_p1"].apply(
-                lambda c: c[:3] + [30]
+                lambda c: c[:3] + [20]
             )
             map_overlaps.loc[~is_match, "color_p2"] = map_overlaps.loc[~is_match, "color_p2"].apply(
-                lambda c: c[:3] + [30]
+                lambda c: c[:3] + [20]
             )
 
         map_overlaps["tip_title"] = "Matched Overlap - " + map_overlaps["Criticality"]
