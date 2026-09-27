@@ -39,11 +39,13 @@ def find_overlaps(data, dist_limit, time_limit):
     records = data.to_dict("records")
     matches = []
 
+    # compare every unique pair of projects to find overlaps
     for i in range(len(records)):
         for j in range(i + 1, len(records)):
             p1 = records[i]
             p2 = records[j]
 
+            # skip checking if they belong to the same utility company
             if p1["utility"] == p2["utility"]:
                 continue
 
@@ -96,7 +98,7 @@ def render_sidebar():
 
 
 def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, selected_overlaps=None):
-    """Constructs the PyDeck layers for projects and their overlaps."""
+    """Constructs the PyDeck map layers for projects and their overlaps."""
     map_projects = projects_df.copy()
     map_projects["color"] = map_projects["utility"].map(color_lookup.get)
 
@@ -104,13 +106,20 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
     if selected_overlaps is not None and not selected_overlaps.empty:
         selected_project_names = set(selected_overlaps["Project 1"]).union(set(selected_overlaps["Project 2"]))
 
+    # helper to dynamically set node opacities depending on what is selected
     def get_node_color(row):
         base = row["color"][:3]
+
+        # if user clicked specific rows in the table, highlight those and heavily dim the rest
         if selected_overlaps is not None and not selected_overlaps.empty:
             return base + [255] if row["project_name"] in selected_project_names else base + [40]
+
+        # if nothing is clicked, just slightly dim projects that don't have any overlaps at all
         return base + [220] if row["project_name"] in active_projects else base + [110]
 
     map_projects["color"] = map_projects.apply(get_node_color, axis=1)
+
+    # increase the radius of selected nodes so they stand out more clearly
     map_projects["radius"] = map_projects["project_name"].apply(
         lambda name: 7500 if (selected_overlaps is not None and name in selected_project_names) else 5000
     )
@@ -132,7 +141,7 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
         radius_max_pixels=14,
         pickable=True,
         auto_highlight=True,
-        parameters={"depthTest": False},
+        parameters={"depthTest": False},  # prevents visual flickering between overlapping dots
     )
     layers.append(project_nodes)
 
@@ -143,6 +152,7 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
         map_overlaps["color_p1"] = map_overlaps["Utility 1"].map(color_lookup.get)
         map_overlaps["color_p2"] = map_overlaps["Utility 2"].map(color_lookup.get)
 
+        # visually emphasize the connecting arcs for any overlaps selected in the table
         if selected_overlaps is not None and not selected_overlaps.empty:
             selected_ranks = set(selected_overlaps["Rank"])
             is_match = map_overlaps["Rank"].isin(selected_ranks)
@@ -224,7 +234,7 @@ def render_map(projects_df, overlaps_df, selected_overlaps=None):
         projects_df, overlaps_df, color_lookup, active_projects, selected_overlaps=selected_overlaps
     )
 
-    # dynamic camera: zooms based on actual geographic spread of selections
+    # dynamic camera: zooms and centers based on the geographic spread of user selections
     if selected_overlaps is not None and not selected_overlaps.empty:
         all_lats = list(selected_overlaps["p1_lat"]) + list(selected_overlaps["p2_lat"])
         all_lons = list(selected_overlaps["p1_lon"]) + list(selected_overlaps["p2_lon"])
@@ -232,12 +242,12 @@ def render_map(projects_df, overlaps_df, selected_overlaps=None):
         view_lat = sum(all_lats) / len(all_lats)
         view_lon = sum(all_lons) / len(all_lons)
 
-        # calculate bounding box spread in degrees
+        # calculate bounding box spread in degrees to figure out how far to zoom out
         lat_span = max(all_lats) - min(all_lats)
         lon_span = max(all_lons) - min(all_lons)
         max_span = max(lat_span, lon_span)
 
-        # scale zoom dynamically by actual distance apart:
+        # step zoom levels based on how far apart the selected projects are
         if max_span < 0.6:
             view_zoom = 8.5
             view_pitch = 45
@@ -248,6 +258,7 @@ def render_map(projects_df, overlaps_df, selected_overlaps=None):
             view_zoom = 6.6
             view_pitch = 35
     else:
+        # fallback to viewing the entire dataset
         view_lat = projects_df["lat_center"].mean()
         view_lon = projects_df["lon_center"].mean()
         view_zoom = 6.5
@@ -319,10 +330,12 @@ def main():
         overlaps_df = overlaps_df.sort_values(by=["Dist. (mi)", "Gap (days)"]).reset_index(drop=True)
         overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
 
-    # check for selected rows in the table
+    # safely extract user's clicked rows from streamlit's session state dictionary
     selected_overlaps = None
     if "overlaps_table" in st.session_state:
         selected_rows = st.session_state.overlaps_table.get("selection", {}).get("rows", [])
+
+        # verify the selected row indices actually exist in our current filtered dataframe
         if selected_rows and not overlaps_df.empty:
             valid_indices = [idx for idx in selected_rows if idx < len(overlaps_df)]
             if valid_indices:
