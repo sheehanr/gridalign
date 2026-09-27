@@ -352,6 +352,30 @@ def main():
             on_select="rerun",
             selection_mode="multi-row",
         )
+
+        # export selected rows if active, otherwise export all filtered matches
+        if selected_overlaps is not None and not selected_overlaps.empty:
+            export_df = selected_overlaps
+            btn_label = f"Export Selected Seams ({len(selected_overlaps)}) (CSV)"
+            file_name = f"GridAlign_{len(selected_overlaps)}_Selected_Seams.csv"
+        else:
+            export_df = overlaps_df
+            btn_label = f"Export Filtered Matches ({len(overlaps_df)}) (CSV)"
+            file_name = f"GridAlign_All_{len(overlaps_df)}_Filtered_Seams.csv"
+
+        # dataframe to csv
+        csv_data = (
+            export_df[["Rank", "Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]]
+            .to_csv(index=False)
+            .encode("utf-8")
+        )
+
+        st.download_button(
+            label=btn_label,
+            data=csv_data,
+            file_name=file_name,
+            mime="text/csv",
+        )
     else:
         st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
