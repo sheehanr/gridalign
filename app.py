@@ -94,11 +94,24 @@ if not overlaps_df.empty:
     overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
 
 # interactive map
-map_col1, map_col2 = st.columns([6, 1], vertical_alignment="bottom")
+map_col1, map_col2 = st.columns([6, 1], vertical_alignment="center")
+
 with map_col1:
-    st.subheader("Overlap Map")
+    st.markdown(
+        f"""
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <span style="font-size: 1.45rem; font-weight: 700; color: #ffffff;">
+                Coordination Overlaps
+            </span>
+            <span style="background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; font-size: 0.8rem; font-weight: 600; padding: 2px 9px; border-radius: 9999px;">
+                {len(overlaps_df)} Matches
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 with map_col2:
-    # dropdown menu to choose light or dark map
     map_theme = st.selectbox("Map Theme", ["Dark", "Light"], label_visibility="collapsed")
 
 # default map view centers on average of all project coordinates
@@ -213,14 +226,11 @@ legend_items = [
     for u, c in color_lookup.items()
 ]
 st.markdown(
-    "<div style='margin-top: -5px; font-size: 0.85rem; color: #888;'>"
+    "<div style='margin-top: -5px; margin-bottom: 1.5rem; font-size: 0.85rem; color: #888;'>"
     + " &nbsp;&nbsp;&bull;&nbsp;&nbsp; ".join(legend_items)
     + "</div>",
     unsafe_allow_html=True,
 )
-
-st.subheader("Identified Coordination Overlaps")
-st.metric("Matches Found", len(overlaps_df))
 
 # show overlaps according to user-defined thresholds
 if not overlaps_df.empty:
