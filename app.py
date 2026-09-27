@@ -214,25 +214,19 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
 
 
 def render_map(projects_df, overlaps_df, selected_overlaps=None):
-    map_col1, map_col2 = st.columns([6, 1], vertical_alignment="center")
-
-    with map_col1:
-        st.markdown(
-            f"""
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                <span style="font-size: 1.45rem; font-weight: 700; color: #ffffff;">
-                    Coordination Overlaps
-                </span>
-                <span style="background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; font-size: 0.8rem; font-weight: 600; padding: 2px 9px; border-radius: 9999px;">
-                    {len(overlaps_df)} Matches
-                </span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with map_col2:
-        map_theme = st.selectbox("Map Theme", ["Dark", "Light"], label_visibility="collapsed")
+    st.markdown(
+        f"""
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <span style="font-size: 1.45rem; font-weight: 700; color: #ffffff;">
+                Coordination Overlaps
+            </span>
+            <span style="background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; font-size: 0.8rem; font-weight: 600; padding: 2px 9px; border-radius: 9999px;">
+                {len(overlaps_df)} Matches
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     unique_utils = list(projects_df["utility"].unique())
     color_lookup = {u: UTILITY_COLOR_PALETTE[i % len(UTILITY_COLOR_PALETTE)] for i, u in enumerate(unique_utils)}
@@ -277,7 +271,7 @@ def render_map(projects_df, overlaps_df, selected_overlaps=None):
 
     st.pydeck_chart(
         pdk.Deck(
-            map_style="dark" if map_theme == "Dark" else "road",
+            map_style="dark",
             initial_view_state=pdk.ViewState(
                 latitude=view_lat,
                 longitude=view_lon,
