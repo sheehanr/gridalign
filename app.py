@@ -41,14 +41,25 @@ def get_combined_datasets(uploaded_files):
 
     for uploaded_file in uploaded_files:
         try:
+            uploaded_file.seek(0)
             if uploaded_file.name.endswith(".xlsx"):
                 uploaded_df = pd.read_excel(uploaded_file)
             else:
                 uploaded_df = pd.read_csv(uploaded_file)
 
-            # align critical types with benchmark data
-            if "in_service_date" in uploaded_df.columns:
-                uploaded_df["in_service_date"] = pd.to_datetime(uploaded_df["in_service_date"])
+            # define the minimum required columns for the app to function
+            required_cols = ["project_id", "utility", "project_name", "lat_center", "lon_center", "in_service_date"]
+            missing_cols = [col for col in required_cols if col not in uploaded_df.columns]
+
+            if missing_cols:
+                st.toast(
+                    f"File {uploaded_file.name} missing required columns: {', '.join(missing_cols)}. Skipping.",
+                    icon="⚠️",
+                )
+                continue
+
+            # align critical types with benchmark data, coercing errors to prevent crashes on bad date strings
+            uploaded_df["in_service_date"] = pd.to_datetime(uploaded_df["in_service_date"], errors="coerce")
 
             # ensure coordinates are parsed as float numbers (handles csv whitespace/strings)
             for coord in ["lat_center", "lon_center"]:
@@ -82,7 +93,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def calculate_cost_savings(dist, time_gap, cluster_size=2):
     """Calculate the estimated cost savings ($USD) from sharing resources across utilities."""
-    # beyond 25 miles or 730 days, joint staging is non-viable and yields no savings
+    # beyond 25 miles or 730 days, joint staging is non-viable and yields negligible savings
     if dist > MAX_ECONOMIC_DIST_MI or time_gap > MAX_ECONOMIC_GAP_DAYS:
         return 0
 
@@ -93,15 +104,21 @@ def calculate_cost_savings(dist, time_gap, cluster_size=2):
     # base pairwise savings (labor + equipment staging)
     base_savings = BASE_MOBILIZATION_COST * (dist_factor**1.2) * (time_factor**1.0)
 
-    # dynamic scaling of cost savings for sharing resources across 3+ projects
-    if cluster_size <= 2:
-        multiplier = 1.00  # base cost savings
-    else:
-        # diminishing returns with each additional project
-        scale_bonus = 0.25 * log2(cluster_size - 1)
-        multiplier = min(1.55, 1.00 + scale_bonus)  # hard-capped at 1.55x
+    return int(round(base_savings, -3))
 
-    return int(round(base_savings * multiplier, -3))
+
+def calculate_hub_savings(cluster_size):
+    """Calculate the estimated pooled cost savings ($USD) for a multi-cluster."""
+    if cluster_size <= 1:
+        return 0
+    if cluster_size == 2:
+        return BASE_MOBILIZATION_COST
+
+    # dynamic scaling of cost savings for sharing resources across 3+ projects
+    scale_bonus = 0.25 * log2(cluster_size - 1)
+    multiplier = min(1.55, 1.00 + scale_bonus)  # hard-capped at 1.55x
+
+    return int(round(BASE_MOBILIZATION_COST * multiplier, -3))
 
 
 def assign_criticality_tier(savings, dist, time_gap):
@@ -118,7 +135,7 @@ def assign_criticality_tier(savings, dist, time_gap):
 
 
 def find_overlaps(data, dist_limit, time_limit):
-    """Identify projects from different utilities that overlap in time and space."""
+    """Identify projects from different utilities that overlap in time and space and group multi-clusters into hubs."""
     records = data.to_dict("records")
     raw_matches = []
 
@@ -152,37 +169,70 @@ def find_overlaps(data, dist_limit, time_limit):
                 )
 
     if not raw_matches:
-        return pd.DataFrame()
+        return pd.DataFrame(), {}
 
     df = pd.DataFrame(raw_matches)
 
-    # build adjacency network to detect 3+ project regional clusters
+    # build adjacency network to detect contiguous multi-project regional clusters
     adjacency = {}
     for _, row in df.iterrows():
         p1, p2 = row["Project 1"], row["Project 2"]
         adjacency.setdefault(p1, set()).add(p2)
         adjacency.setdefault(p2, set()).add(p1)
 
+    # extract connected components to identify distinct regional staging hubs
+    visited = set()
+    hubs = []
+    for project in adjacency:
+        if project not in visited:
+            component = set()
+            queue = [project]
+            visited.add(project)
+            while queue:
+                curr = queue.pop(0)
+                component.add(curr)
+                for neighbor in adjacency[curr]:
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+            hubs.append(component)
+
+    # sort clusters so largest cluster is always hub a
+    hubs = sorted(hubs, key=len, reverse=True)
+
+    # map each project to its designated hub label and store hub metrics
+    project_to_hub = {}
+    hub_summary = {}
+    for idx, hub_projects in enumerate(hubs):
+        hub_name = f"Hub {chr(65 + idx)}"  # hub a, hub b, hub c...
+        for p in hub_projects:
+            project_to_hub[p] = hub_name
+
+        hub_summary[hub_name] = {
+            "project_count": len(hub_projects),
+            "projects": hub_projects,
+            "hub_savings": calculate_hub_savings(len(hub_projects)),
+        }
+
     savings_list = []
     tiers_list = []
+    hubs_list = []
 
-    # compute savings using the dynamic cluster size
+    # compute pairwise bilateral savings and assign hub associations
     for _, row in df.iterrows():
-        connected = adjacency.get(row["Project 1"], set()).union(adjacency.get(row["Project 2"], set()))
-        connected.add(row["Project 1"])
-        connected.add(row["Project 2"])
-        cluster_size = len(connected)
-
-        savings = calculate_cost_savings(row["Dist. (mi)"], row["Gap (days)"], cluster_size=cluster_size)
+        hub_id = project_to_hub.get(row["Project 1"], "Independent")
+        savings = calculate_cost_savings(row["Dist. (mi)"], row["Gap (days)"])
         tier = assign_criticality_tier(savings, row["Dist. (mi)"], row["Gap (days)"])
 
+        hubs_list.append(hub_id)
         savings_list.append(savings)
         tiers_list.append(tier)
 
+    df["Hub"] = hubs_list
     df["Savings ($)"] = savings_list
     df["Criticality"] = tiers_list
 
-    return df
+    return df, hub_summary
 
 
 # --- ui components ---
@@ -239,6 +289,27 @@ def inject_custom_css():
             /* pin all question mark icons to the far right edge */
             section[data-testid="stSidebar"] [data-testid="stTooltipHoverTarget"] {
                 margin-left: auto !important;
+            }
+
+            /* center metric cards, labels, and values */
+            [data-testid="stMetric"] {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+            }
+
+            [data-testid="stMetricLabel"] {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
+            }
+
+            [data-testid="stMetricValue"] {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
             }
         </style>
         """,
@@ -590,8 +661,8 @@ def main():
     # render sidebar with dynamic filters
     max_dist, max_time_gap, selected_utils, selected_tiers = render_sidebar(all_utilities)
 
-    # calculate overlaps based on distance and schedule sliders
-    overlaps_df = find_overlaps(projects_df, max_dist, max_time_gap)
+    # calculate overlaps and multi-cluster regional hubs
+    overlaps_df, hub_summary = find_overlaps(projects_df, max_dist, max_time_gap)
 
     # apply utility and tier filters
     if not overlaps_df.empty:
@@ -611,24 +682,105 @@ def main():
             ).reset_index(drop=True)
             overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
 
-    # safely extract user's clicked rows from streamlit's session state dictionary
-    selected_overlaps = None
-    if "overlaps_table" in st.session_state:
-        selected_rows = st.session_state.overlaps_table.get("selection", {}).get("rows", [])
+    hubs_df = pd.DataFrame()
+    if not overlaps_df.empty:
+        active_hub_names = set(overlaps_df["Hub"])
+        hubs_data = []
+        for name, h in hub_summary.items():
+            if name in active_hub_names:
+                hubs_data.append(
+                    {
+                        "Hub": name,
+                        "Hub Savings ($)": h["hub_savings"],
+                        "Project Count": h["project_count"],
+                        "Projects": ", ".join(sorted(h["projects"])),
+                    }
+                )
 
-        # verify the selected row indices actually exist in our current filtered dataframe
+        if hubs_data:
+            hubs_df = pd.DataFrame(hubs_data).sort_values(by="Hub Savings ($)", ascending=False).reset_index(drop=True)
+            hubs_df.insert(0, "Rank", range(1, len(hubs_df) + 1))
+
+    # safely extract user's clicked rows, prioritizing direct hub clicks over individual lines
+    selected_overlaps = None
+    if "hubs_table" in st.session_state:
+        selected_hub_rows = st.session_state.hubs_table.get("selection", {}).get("rows", [])
+        if selected_hub_rows and not hubs_df.empty:
+            valid_hub_indices = [idx for idx in selected_hub_rows if idx < len(hubs_df)]
+            if valid_hub_indices:
+                selected_hubs_names = hubs_df.iloc[valid_hub_indices]["Hub"].tolist()
+                selected_overlaps = pd.DataFrame(overlaps_df[overlaps_df["Hub"].isin(selected_hubs_names)])
+
+    if selected_overlaps is None and "overlaps_table" in st.session_state:
+        selected_rows = st.session_state.overlaps_table.get("selection", {}).get("rows", [])
         if selected_rows and not overlaps_df.empty:
             valid_indices = [idx for idx in selected_rows if idx < len(overlaps_df)]
             if valid_indices:
-                selected_overlaps = overlaps_df.iloc[valid_indices]
+                selected_overlaps = pd.DataFrame(overlaps_df.iloc[valid_indices])
+
+    # render multi-cluster hub kpi metrics
+    if not overlaps_df.empty:
+        # count unique physical projects participating in any overlap
+        unique_projects_count = len(set(overlaps_df["Project 1"]).union(set(overlaps_df["Project 2"])))
+        active_hubs = overlaps_df["Hub"].nunique()
+        total_hub_savings = sum(h["hub_savings"] for name, h in hub_summary.items() if name in set(overlaps_df["Hub"]))
+
+        col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
+        col_kpi1.metric("Identified Hubs", f"{active_hubs}")
+        col_kpi2.metric("Involved Projects", f"{unique_projects_count}")
+        col_kpi3.metric("Potential Cost Savings", f"${total_hub_savings:,.0f}")
+        st.write("")
 
     render_map(projects_df, overlaps_df, selected_overlaps=selected_overlaps)
 
     if not overlaps_df.empty:
+        st.write("")
+        st.write("Hub Table")
+
+        if not hubs_df.empty:
+            st.dataframe(
+                hubs_df,
+                column_config={
+                    "Hub Savings ($)": st.column_config.NumberColumn(
+                        "Hub Savings ($)",
+                        format="$%d",
+                    ),
+                },
+                use_container_width=True,
+                hide_index=True,
+                key="hubs_table",
+                on_select="rerun",
+                selection_mode="multi-row",
+            )
+
+            # check if there are specific hub rows selected to selectively export
+            selected_hubs_to_export = None
+            if "hubs_table" in st.session_state:
+                sel_rows = st.session_state.hubs_table.get("selection", {}).get("rows", [])
+                if sel_rows:
+                    valid_idx = [idx for idx in sel_rows if idx < len(hubs_df)]
+                    if valid_idx:
+                        selected_hubs_to_export = pd.DataFrame(hubs_df.iloc[valid_idx])
+
+            export_hubs_df = selected_hubs_to_export if selected_hubs_to_export is not None else hubs_df
+            hub_btn_label = f"Export {'Selected' if selected_hubs_to_export is not None else 'All'} Hubs Summary ({len(export_hubs_df)}) (CSV)"
+            hub_file_name = f"GridAlign_{len(export_hubs_df)}_{'Selected' if selected_hubs_to_export is not None else 'All'}_Hubs_Summary.csv"
+
+            hub_csv_data = export_hubs_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label=hub_btn_label,
+                data=hub_csv_data,
+                file_name=hub_file_name,
+                mime="text/csv",
+                key="download_hubs_csv",
+            )
+
+        st.write("Involved Projects Table")
         st.dataframe(
             overlaps_df[
                 [
                     "Rank",
+                    "Hub",
                     "Criticality",
                     "Savings ($)",
                     "Dist. (mi)",
@@ -667,6 +819,7 @@ def main():
             export_df[
                 [
                     "Rank",
+                    "Hub",
                     "Criticality",
                     "Savings ($)",
                     "Dist. (mi)",
@@ -687,6 +840,7 @@ def main():
             file_name=file_name,
             mime="text/csv",
         )
+
     else:
         st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
 
