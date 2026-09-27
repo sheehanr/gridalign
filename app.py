@@ -236,11 +236,14 @@ st.divider()
 
 # raw data inspection
 with st.expander("View Raw Projects Data"):
-    col1, col2 = st.columns(2)
-    col1.metric("Total Projects", len(projects_df))
-    col2.metric("Utilities Found", ", ".join(projects_df["utility"].unique()))
+    utilities_str = ", ".join(sorted(projects_df["utility"].unique()))
+    st.write(f"**Utilities represented:** {utilities_str}")
 
-    st.subheader("Raw Projects Data")
+    col1, col2 = st.columns(2)
+    col1.metric("Total Project Count", len(projects_df))
+    col2.metric("Total Utility Count", len(projects_df["utility"].unique()))
+
+    st.subheader("Projects")
     st.dataframe(
         projects_df[["project_id", "utility", "state", "project_name", "lat_center", "lon_center", "in_service_date"]],
         use_container_width=True,
