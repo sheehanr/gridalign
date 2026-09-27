@@ -95,15 +95,24 @@ def render_sidebar():
     return max_dist, max_time_gap
 
 
-def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects):
+def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, selected_overlaps=None):
     """Constructs the PyDeck layers for projects and their overlaps."""
     map_projects = projects_df.copy()
     map_projects["color"] = map_projects["utility"].map(color_lookup.get)
 
-    # reduced opacity on nodes that aren't part of any active overlap
-    map_projects["color"] = map_projects.apply(
-        lambda row: row["color"][:3] + [220] if row["project_name"] in active_projects else row["color"][:3] + [110],
-        axis=1,
+    selected_project_names = set()
+    if selected_overlaps is not None and not selected_overlaps.empty:
+        selected_project_names = set(selected_overlaps["Project 1"]).union(set(selected_overlaps["Project 2"]))
+
+    def get_node_color(row):
+        base = row["color"][:3]
+        if selected_overlaps is not None and not selected_overlaps.empty:
+            return base + [255] if row["project_name"] in selected_project_names else base + [40]
+        return base + [220] if row["project_name"] in active_projects else base + [110]
+
+    map_projects["color"] = map_projects.apply(get_node_color, axis=1)
+    map_projects["radius"] = map_projects["project_name"].apply(
+        lambda name: 7500 if (selected_overlaps is not None and name in selected_project_names) else 5000
     )
 
     map_projects["date_str"] = map_projects["in_service_date"].dt.strftime("%b %Y")
@@ -118,19 +127,42 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects):
         data=map_projects,
         get_position=["lon_center", "lat_center"],
         get_fill_color="color",
-        get_radius=6000,
-        radius_min_pixels=6,
-        radius_max_pixels=15,
+        get_radius="radius",
+        radius_min_pixels=5,
+        radius_max_pixels=14,
         pickable=True,
         auto_highlight=True,
-        parameters={"depthTest": False},  # prevents z-fighting between overlapping dots
+        parameters={"depthTest": False},
     )
     layers.append(project_nodes)
 
     if not overlaps_df.empty:
         map_overlaps = overlaps_df.copy()
+
+        map_overlaps["arc_width"] = 2.0
         map_overlaps["color_p1"] = map_overlaps["Utility 1"].map(color_lookup.get)
         map_overlaps["color_p2"] = map_overlaps["Utility 2"].map(color_lookup.get)
+
+        if selected_overlaps is not None and not selected_overlaps.empty:
+            selected_ranks = set(selected_overlaps["Rank"])
+            is_match = map_overlaps["Rank"].isin(selected_ranks)
+
+            # increased arc width and opacity for selected rows
+            map_overlaps.loc[is_match, "arc_width"] = 3.5
+            map_overlaps.loc[is_match, "color_p1"] = map_overlaps.loc[is_match, "color_p1"].apply(
+                lambda c: c[:3] + [255]
+            )
+            map_overlaps.loc[is_match, "color_p2"] = map_overlaps.loc[is_match, "color_p2"].apply(
+                lambda c: c[:3] + [255]
+            )
+
+            # decreased arc opacity for unselected rows
+            map_overlaps.loc[~is_match, "color_p1"] = map_overlaps.loc[~is_match, "color_p1"].apply(
+                lambda c: c[:3] + [30]
+            )
+            map_overlaps.loc[~is_match, "color_p2"] = map_overlaps.loc[~is_match, "color_p2"].apply(
+                lambda c: c[:3] + [30]
+            )
 
         map_overlaps["tip_title"] = "Matched Overlap"
         map_overlaps["tip_sub"] = map_overlaps["Project 1"] + " ↔ " + map_overlaps["Project 2"]
@@ -149,7 +181,9 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects):
             get_target_position=["p2_lon", "p2_lat"],
             get_source_color="color_p1",
             get_target_color="color_p2",
-            get_width=3,
+            get_width="arc_width",
+            width_min_pixels=1,
+            width_max_pixels=4,
             pickable=True,
             auto_highlight=True,
         )
@@ -158,7 +192,7 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects):
     return layers
 
 
-def render_map(projects_df, overlaps_df):
+def render_map(projects_df, overlaps_df, selected_overlaps=None):
     map_col1, map_col2 = st.columns([6, 1], vertical_alignment="center")
 
     with map_col1:
@@ -186,16 +220,31 @@ def render_map(projects_df, overlaps_df):
     if not overlaps_df.empty:
         active_projects = set(overlaps_df["Project 1"]).union(set(overlaps_df["Project 2"]))
 
-    layers = build_map_layers(projects_df, overlaps_df, color_lookup, active_projects)
+    layers = build_map_layers(
+        projects_df, overlaps_df, color_lookup, active_projects, selected_overlaps=selected_overlaps
+    )
+
+    if selected_overlaps is not None and not selected_overlaps.empty:
+        all_lats = list(selected_overlaps["p1_lat"]) + list(selected_overlaps["p2_lat"])
+        all_lons = list(selected_overlaps["p1_lon"]) + list(selected_overlaps["p2_lon"])
+        view_lat = sum(all_lats) / len(all_lats)
+        view_lon = sum(all_lons) / len(all_lons)
+        view_zoom = 8.5 if len(selected_overlaps) == 1 else 7.2
+        view_pitch = 45 if len(selected_overlaps) == 1 else 35
+    else:
+        view_lat = projects_df["lat_center"].mean()
+        view_lon = projects_df["lon_center"].mean()
+        view_zoom = 6.5
+        view_pitch = 35
 
     st.pydeck_chart(
         pdk.Deck(
             map_style="dark" if map_theme == "Dark" else "road",
             initial_view_state=pdk.ViewState(
-                latitude=projects_df["lat_center"].mean(),
-                longitude=projects_df["lon_center"].mean(),
-                zoom=6.5,
-                pitch=35,
+                latitude=view_lat,
+                longitude=view_lon,
+                zoom=view_zoom,
+                pitch=view_pitch,
             ),
             layers=layers,
             tooltip={
@@ -211,7 +260,6 @@ def render_map(projects_df, overlaps_df):
         )
     )
 
-    # legend
     legend_items = [
         f"<span style='display:inline-block;width:10px;height:10px;background-color:rgb({c[0]},{c[1]},{c[2]});border-radius:50%;margin-right:6px;'></span><b>{u}</b>"
         for u, c in color_lookup.items()
@@ -255,13 +303,25 @@ def main():
         overlaps_df = overlaps_df.sort_values(by=["Dist. (mi)", "Gap (days)"]).reset_index(drop=True)
         overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
 
-    render_map(projects_df, overlaps_df)
+    # check for selected rows in the table
+    selected_overlaps = None
+    if "overlaps_table" in st.session_state:
+        selected_rows = st.session_state.overlaps_table.get("selection", {}).get("rows", [])
+        if selected_rows and not overlaps_df.empty:
+            valid_indices = [idx for idx in selected_rows if idx < len(overlaps_df)]
+            if valid_indices:
+                selected_overlaps = overlaps_df.iloc[valid_indices]
+
+    render_map(projects_df, overlaps_df, selected_overlaps=selected_overlaps)
 
     if not overlaps_df.empty:
         st.dataframe(
             overlaps_df[["Rank", "Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]],
             use_container_width=True,
             hide_index=True,
+            key="overlaps_table",
+            on_select="rerun",
+            selection_mode="multi-row",
         )
     else:
         st.info("No overlaps found within the selected thresholds. Try adjusting the sliders above.")
