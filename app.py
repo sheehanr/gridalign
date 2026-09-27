@@ -122,6 +122,17 @@ color_lookup = {u: palette[i % len(palette)] for i, u in enumerate(unique_utils)
 
 map_projects = projects_df.copy()
 map_projects["color"] = map_projects["utility"].map(color_lookup.get)
+
+# identify all projects involved in an active overlap
+active_projects = set()
+if not overlaps_df.empty:
+    active_projects = set(overlaps_df["Project 1"]).union(set(overlaps_df["Project 2"]))
+
+# decreased opacity for nodes out of range
+map_projects["color"] = map_projects.apply(
+    lambda row: row["color"][:3] + [220] if row["project_name"] in active_projects else row["color"][:3] + [110],
+    axis=1,
+)
 map_projects["date_str"] = map_projects["in_service_date"].dt.strftime("%b %Y")
 
 map_projects["tip_title"] = map_projects["project_name"]
