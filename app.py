@@ -73,7 +73,7 @@ st.subheader("Coordination Thresholds")
 
 dist_slider, time_slider = st.columns(2)
 with dist_slider:
-    max_dist = st.slider("Max Distance (mi)", min_value=5.0, max_value=60.0, value=30.0, step=5.0)
+    max_dist = st.slider("Max Distance (mi)", min_value=5.0, max_value=60.0, value=25.0, step=5.0)
 with time_slider:
     # largest time_gap on spreadsheet is 3074
     max_time_gap = st.slider("Max Time Gap (days)", min_value=0, max_value=3650, value=730, step=60)
