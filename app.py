@@ -119,6 +119,10 @@ map_projects = projects_df.copy()
 map_projects["color"] = map_projects["utility"].map(color_lookup.get)
 map_projects["date_str"] = map_projects["in_service_date"].dt.strftime("%b %Y")
 
+map_projects["tip_title"] = map_projects["project_name"]
+map_projects["tip_sub"] = "Utility: " + map_projects["utility"]
+map_projects["tip_body"] = "In-Service: " + map_projects["date_str"]
+
 layers = []
 
 # colored circular nodes on map for project location
@@ -144,6 +148,16 @@ if not overlaps_df.empty:
     map_overlaps["color_p1"] = map_overlaps["Utility 1"].map(color_lookup.get)
     map_overlaps["color_p2"] = map_overlaps["Utility 2"].map(color_lookup.get)
 
+    map_overlaps["tip_title"] = "Matched Overlap"
+    map_overlaps["tip_sub"] = map_overlaps["Project 1"] + " ↔ " + map_overlaps["Project 2"]
+    map_overlaps["tip_body"] = (
+        "Distance: "
+        + map_overlaps["Dist. (mi)"].astype(str)
+        + " mi | Gap: "
+        + map_overlaps["Gap (days)"].astype(str)
+        + " days"
+    )
+
     overlap_arcs = pdk.Layer(
         "ArcLayer",
         data=map_overlaps,
@@ -158,6 +172,7 @@ if not overlaps_df.empty:
     layers.append(overlap_arcs)
 
 # render pydeck map
+# render pydeck map
 st.pydeck_chart(
     pdk.Deck(
         map_style="dark" if map_theme == "Dark" else "road",
@@ -170,8 +185,13 @@ st.pydeck_chart(
         layers=layers,
         tooltip={
             # type: ignore
-            "html": "<b>{project_name}</b><br/>Utility: {utility}<br/>In-Service: {date_str}",
-            "style": {"backgroundColor": "#1e1e1e", "color": "white", "fontSize": "13px"},
+            "html": "<b>{tip_title}</b><br/>{tip_sub}<br/>{tip_body}",
+            "style": {
+                "backgroundColor": "#1e1e1e",
+                "color": "white",
+                "fontSize": "13px",
+                "maxWidth": "250px",
+            },
         },
     )
 )
