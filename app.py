@@ -1,4 +1,4 @@
-from math import asin, cos, radians, sin, sqrt
+from math import asin, cos, log2, radians, sin, sqrt
 
 import pandas as pd
 import pydeck as pdk
@@ -11,10 +11,13 @@ DATA_PATH = "data/Projects_Overlaps.xlsx"
 EARTH_RADIUS_MI = 3959.0
 UTILITY_COLOR_PALETTE = [
     [0, 122, 255, 200],
-    [255, 215, 0],
+    [255, 215, 0, 200],
     [52, 199, 89, 200],
     [175, 82, 222, 200],
 ]
+MAX_ECONOMIC_DIST_MI = 25.0  # transmission staging radius limit
+MAX_ECONOMIC_GAP_DAYS = 730  # in-service date gap limit
+BASE_MOBILIZATION_COST = 1_800_000  # baseline combined equipment and labor cost
 
 
 # --- data processing ---
@@ -34,10 +37,47 @@ def haversine(lat1, lon1, lat2, lon2):
     return EARTH_RADIUS_MI * c
 
 
+def calculate_cost_savings(dist, time_gap, cluster_size=2):
+    """Calculate the estimated cost savings ($USD) from sharing resources across utilities."""
+    # beyond 25 miles or 730 days, joint staging is non-viable and yields no savings
+    if dist > MAX_ECONOMIC_DIST_MI or time_gap > MAX_ECONOMIC_GAP_DAYS:
+        return 0
+
+    # non-linear decay curves since cost saving is greater at lower distances and time gaps
+    dist_factor = max(0.0, 1.0 - (dist / MAX_ECONOMIC_DIST_MI))
+    time_factor = max(0.0, 1.0 - (time_gap / MAX_ECONOMIC_GAP_DAYS))
+
+    # base pairwise savings (labor + equipment staging)
+    base_savings = BASE_MOBILIZATION_COST * (dist_factor**1.2) * (time_factor**1.0)
+
+    # dynamic scaling of cost savings for sharing resources across 3+ projects
+    if cluster_size <= 2:
+        multiplier = 1.00  # base cost savings
+    else:
+        # diminishing returns with each additional project
+        scale_bonus = 0.25 * log2(cluster_size - 1)
+        multiplier = min(1.55, 1.00 + scale_bonus)  # hard-capped at 1.55x
+
+    return int(round(base_savings * multiplier, -3))
+
+
+def assign_criticality_tier(savings, dist, time_gap):
+    """Assign an actionable 'criticality-tier' based on cost savings and operational window."""
+    if savings == 0:
+        return "Negligible Savings"
+
+    if savings >= 750_000 or (dist <= 10.0 and time_gap <= 180):
+        return "Tier 1 (High)"
+    elif savings >= 250_000:
+        return "Tier 2 (Moderate)"
+    else:
+        return "Tier 3 (Low)"
+
+
 def find_overlaps(data, dist_limit, time_limit):
     """Identify projects from different utilities that overlap in time and space."""
     records = data.to_dict("records")
-    matches = []
+    raw_matches = []
 
     # compare every unique pair of projects to find overlaps
     for i in range(len(records)):
@@ -53,7 +93,7 @@ def find_overlaps(data, dist_limit, time_limit):
             time_gap = abs((p1["in_service_date"] - p2["in_service_date"]).days)
 
             if dist <= dist_limit and time_gap <= time_limit:
-                matches.append(
+                raw_matches.append(
                     {
                         "Project 1": p1["project_name"],
                         "Utility 1": p1["utility"],
@@ -68,7 +108,38 @@ def find_overlaps(data, dist_limit, time_limit):
                     }
                 )
 
-    return pd.DataFrame(matches)
+    if not raw_matches:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(raw_matches)
+
+    # build adjacency network to detect 3+ project regional clusters
+    adjacency = {}
+    for _, row in df.iterrows():
+        p1, p2 = row["Project 1"], row["Project 2"]
+        adjacency.setdefault(p1, set()).add(p2)
+        adjacency.setdefault(p2, set()).add(p1)
+
+    savings_list = []
+    tiers_list = []
+
+    # compute savings using the dynamic cluster size
+    for _, row in df.iterrows():
+        connected = adjacency.get(row["Project 1"], set()).union(adjacency.get(row["Project 2"], set()))
+        connected.add(row["Project 1"])
+        connected.add(row["Project 2"])
+        cluster_size = len(connected)
+
+        savings = calculate_cost_savings(row["Dist. (mi)"], row["Gap (days)"], cluster_size=cluster_size)
+        tier = assign_criticality_tier(savings, row["Dist. (mi)"], row["Gap (days)"])
+
+        savings_list.append(savings)
+        tiers_list.append(tier)
+
+    df["Savings ($)"] = savings_list
+    df["Criticality"] = tiers_list
+
+    return df
 
 
 # --- ui components ---
@@ -185,14 +256,15 @@ def build_map_layers(projects_df, overlaps_df, color_lookup, active_projects, se
                 lambda c: c[:3] + [30]
             )
 
-        map_overlaps["tip_title"] = "Matched Overlap"
+        map_overlaps["tip_title"] = "Matched Overlap - " + map_overlaps["Criticality"]
         map_overlaps["tip_sub"] = map_overlaps["Project 1"] + " ↔ " + map_overlaps["Project 2"]
         map_overlaps["tip_body"] = (
-            "Distance: "
+            "Dist.: "
             + map_overlaps["Dist. (mi)"].astype(str)
             + " mi | Gap: "
             + map_overlaps["Gap (days)"].astype(str)
-            + " days"
+            + " days | Est. Savings: $"
+            + map_overlaps["Savings ($)"].apply(lambda x: f"{x:,}")
         )
 
         overlap_arcs = pdk.Layer(
@@ -332,8 +404,10 @@ def main():
     overlaps_df = find_overlaps(projects_df, max_dist, max_time_gap)
 
     if not overlaps_df.empty:
-        # rank entries primarily by distance and time gap
-        overlaps_df = overlaps_df.sort_values(by=["Dist. (mi)", "Gap (days)"]).reset_index(drop=True)
+        # rank entries primarily by cost savings and then distance
+        overlaps_df = overlaps_df.sort_values(by=["Savings ($)", "Dist. (mi)"], ascending=[False, True]).reset_index(
+            drop=True
+        )
         overlaps_df.insert(0, "Rank", range(1, len(overlaps_df) + 1))
 
     # safely extract user's clicked rows from streamlit's session state dictionary
@@ -351,7 +425,25 @@ def main():
 
     if not overlaps_df.empty:
         st.dataframe(
-            overlaps_df[["Rank", "Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]],
+            overlaps_df[
+                [
+                    "Rank",
+                    "Criticality",
+                    "Savings ($)",
+                    "Dist. (mi)",
+                    "Gap (days)",
+                    "Project 1",
+                    "Utility 1",
+                    "Project 2",
+                    "Utility 2",
+                ]
+            ],
+            column_config={
+                "Savings ($)": st.column_config.NumberColumn(
+                    "Savings ($)",
+                    format="$%d",
+                ),
+            },
             use_container_width=True,
             hide_index=True,
             key="overlaps_table",
@@ -371,7 +463,19 @@ def main():
 
         # dataframe to csv
         csv_data = (
-            export_df[["Rank", "Dist. (mi)", "Gap (days)", "Project 1", "Utility 1", "Project 2", "Utility 2"]]
+            export_df[
+                [
+                    "Rank",
+                    "Criticality",
+                    "Savings ($)",
+                    "Dist. (mi)",
+                    "Gap (days)",
+                    "Project 1",
+                    "Utility 1",
+                    "Project 2",
+                    "Utility 2",
+                ]
+            ]
             .to_csv(index=False)
             .encode("utf-8")
         )
