@@ -175,7 +175,7 @@ def main():
         )
 
         st.write("")
-        st.write("##### Hub Table")
+        st.write("##### Hubs View")
 
         if not hubs_df.empty:
             st.dataframe(
