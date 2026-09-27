@@ -4,7 +4,7 @@ import pandas as pd
 import pydeck as pdk
 import streamlit as st
 
-st.set_page_config(layout="wide", page_title="GridAlign", initial_sidebar_state="expanded")
+st.set_page_config(layout="wide", page_title="GridAlign", page_icon="⚡", initial_sidebar_state="expanded")
 
 # --- constants ---
 DATA_PATH = "data/Projects_Overlaps.xlsx"
@@ -205,8 +205,30 @@ def inject_custom_css():
 
 def render_title():
     st.markdown(
-        "<h1 style='text-align: center; font-size: 3.5rem; font-weight: 700; margin-top: 0rem; margin-bottom: 2rem;'>"
-        "GridAlign</h1>",
+        """
+        <div style="text-align: center; margin-bottom: 3rem;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 0;">
+                <svg width="40" height="50" viewBox="0 0 34 42" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- high voltage transmission tower -->
+                    <line x1="17" y1="2" x2="6" y2="40"/>
+                    <line x1="17" y1="2" x2="28" y2="40"/>
+                    <line x1="3" y1="12" x2="31" y2="12"/>
+                    <line x1="5" y1="22" x2="29" y2="22"/>
+                    <line x1="8" y1="32" x2="26" y2="32"/>
+                    <line x1="10" y1="12" x2="24" y2="22"/>
+                    <line x1="24" y1="12" x2="10" y2="22"/>
+                    <line x1="8" y1="22" x2="26" y2="32"/>
+                    <line x1="26" y1="22" x2="8" y2="32"/>
+                </svg>
+                <h1 style="margin: 0; font-size: 3.25rem; font-weight: 800; letter-spacing: -0.03em; color: #f4f4f5; line-height: 1;">
+                    GridAlign
+                </h1>
+            </div>
+            <p style="margin: 0; font-size: 0.95rem; color: #71717a; font-weight: 500; letter-spacing: 0.01em;">
+                Cross-Utility Transmission Coordination
+            </p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
