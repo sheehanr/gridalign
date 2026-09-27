@@ -12,7 +12,7 @@ A coordination dashboard for regional power grid planning. GridAlign identifies 
 ![GridAlign Dashboard 2 -- Overlapping Projects and Hubs Views](assets/gridalign_dashboard2.png)
 ![GridAlign Dashboard 3 -- All Loaded Data View](assets/gridalign_dashboard3.png)
 
-[Watch the Demo Video](LINK)
+[Watch the Demo Video](https://youtu.be/sLFvRct_IdE)
 
 ---
 
@@ -77,9 +77,15 @@ The application architecture follows a modular, production-ready structure separ
 
 ---
 
+## Datasets
+
+GridAlign was built primarily using the dataset provided by Sperry Tech for the ShellHacks 2026 Gridlock Challenge found in `data/Projects_Overlaps.xlsx`. Additional mock data was generated with the schema of this dataset to simulate a third and fourth utility.
+
+---
+
 ## Data Schema
 
-GridAlign accepts uploads of `.csv` and `.xlsx` datasets with the following required columns (matching the columns of the spreadsheet provided by Sperry Tech):
+GridAlign accepts uploads of `.csv` and `.xlsx` datasets with the following required columns (matching the columns of the provided dataset):
 
 - `project_id` (Unique identifier)
 - `utility` (Name of the utility company)
@@ -90,4 +96,4 @@ GridAlign accepts uploads of `.csv` and `.xlsx` datasets with the following requ
 
 ---
 
-Built at **ShellHacks 2026** for the **Sperry Tech Challenge: Gridlock**
+Built at **ShellHacks 2026** for the **Sperry Tech Gridlock Challenge**
