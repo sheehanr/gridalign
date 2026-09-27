@@ -224,13 +224,29 @@ def render_map(projects_df, overlaps_df, selected_overlaps=None):
         projects_df, overlaps_df, color_lookup, active_projects, selected_overlaps=selected_overlaps
     )
 
+    # dynamic camera: zooms based on actual geographic spread of selections
     if selected_overlaps is not None and not selected_overlaps.empty:
         all_lats = list(selected_overlaps["p1_lat"]) + list(selected_overlaps["p2_lat"])
         all_lons = list(selected_overlaps["p1_lon"]) + list(selected_overlaps["p2_lon"])
+
         view_lat = sum(all_lats) / len(all_lats)
         view_lon = sum(all_lons) / len(all_lons)
-        view_zoom = 8.5 if len(selected_overlaps) == 1 else 7.2
-        view_pitch = 45 if len(selected_overlaps) == 1 else 35
+
+        # calculate bounding box spread in degrees
+        lat_span = max(all_lats) - min(all_lats)
+        lon_span = max(all_lons) - min(all_lons)
+        max_span = max(lat_span, lon_span)
+
+        # scale zoom dynamically by actual distance apart:
+        if max_span < 0.6:
+            view_zoom = 8.5
+            view_pitch = 45
+        elif max_span < 1.8:
+            view_zoom = 7.4
+            view_pitch = 40
+        else:
+            view_zoom = 6.6
+            view_pitch = 35
     else:
         view_lat = projects_df["lat_center"].mean()
         view_lon = projects_df["lon_center"].mean()
