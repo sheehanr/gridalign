@@ -188,7 +188,7 @@ def find_overlaps(data, dist_limit, time_limit):
     project_to_hub = {}
     hub_summary = {}
     for idx, hub_projects in enumerate(hubs):
-        hub_name = f"Hub {idx + 1}"  # Hub 1, Hub 2, Hub 3...
+        hub_name = f"Hub {chr(65 + idx)}"  # hub a, hub b, hub c...
         for p in hub_projects:
             project_to_hub[p] = hub_name
 

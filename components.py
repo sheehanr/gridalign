@@ -58,6 +58,27 @@ def inject_custom_css():
             section[data-testid="stSidebar"] [data-testid="stTooltipHoverTarget"] {
                 margin-left: auto !important;
             }
+
+            /* center metric cards, labels, and values */
+            [data-testid="stMetric"] {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+            }
+
+            [data-testid="stMetricLabel"] {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
+            }
+
+            [data-testid="stMetricValue"] {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
+            }
         </style>
         """,
         unsafe_allow_html=True,
