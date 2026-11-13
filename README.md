@@ -8,7 +8,7 @@ A coordination dashboard for regional power grid planning. GridAlign identifies 
 
 ---
 
-## Screenshots & Demo
+## Demo
 
 ![GridAlign Dashboard 1 -- Interactive Map](assets/gridalign_dashboard1.png)
 ![GridAlign Dashboard 2 -- Overlapping Project Pairs and Shared Staging Hubs](assets/gridalign_dashboard2.png)
@@ -18,7 +18,7 @@ A coordination dashboard for regional power grid planning. GridAlign identifies 
 
 ---
 
-### Key Features
+## Key Features
 
 - **Interactive Geospatial Map:** Built with PyDeck to map transmission corridors across utility boundaries. Selecting a project or regional hub dynamically shifts the camera focus and isolates connected lines.
 - **Regional Hub Clustering:** Groups connected overlapping projects (2+) into regional hubs so utilities can share resources across several projects, with additional savings for hubs of 3+ projects.
@@ -42,10 +42,10 @@ Savings calculations are grounded in transmission construction benchmarks (FERC 
 
 ## Tech Stack
 
-- **Language**: Python 3.14.3
-- **Frontend / UI**: Streamlit
-- **Geospatial Visualization**: PyDeck (Deck.gl)
-- **Data Processing**: Pandas, OpenPyXL
+- **Language:** Python 3.14.3
+- **Frontend / UI:** Streamlit
+- **Geospatial Visualization:** PyDeck (Deck.gl)
+- **Data Processing:** Pandas, OpenPyXL
 
 The application architecture follows a modular, production-ready structure separating constants (`constants.py`), data logic (`logic.py`), UI rendering (`components.py`), and state orchestration (`app.py`).
 
